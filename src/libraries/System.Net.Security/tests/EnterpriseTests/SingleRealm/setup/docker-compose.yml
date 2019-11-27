@@ -1,0 +1,81 @@
+version: "3.7"
+
+services:
+  kdc:
+    build:
+      context: ./
+      dockerfile: ./kdc/Dockerfile
+    image: kdc:5.0
+    container_name: kdc
+    hostname: kdc
+    domainname: linux.contoso.com
+    dns_search: linux.contoso.com
+    volumes:
+      - shared-volume:/SHARED
+    networks:
+      - network1
+
+  linuxweb:
+    build:
+      context: ./
+      dockerfile: ./linuxweb/Dockerfile
+      args:
+        SDK_BASE_IMAGE: ${SDK_BASE_IMAGE:-mcr.microsoft.com/dotnet/core/sdk:3.0.100-bionic}
+    image: linuxweb:5.0
+    container_name: linuxweb
+    hostname: linuxweb
+    domainname: linux.contoso.com
+    dns_search: linux.contoso.com
+    volumes:
+      - shared-volume:/SHARED
+    networks:
+      network1:
+        aliases:
+          - webserver.linux.contoso.com
+    depends_on:
+      - kdc
+
+  apacheweb:
+    build:
+      context: ./
+      dockerfile: ./apacheweb/Dockerfile
+    image: apacheweb:5.0
+    container_name: apacheweb
+    hostname: apacheweb
+    domainname: linux.contoso.com
+    dns_search: linux.contoso.com
+    volumes:
+      - shared-volume:/SHARED
+    networks:
+      network1:
+        aliases:
+          - apache.linux.contoso.com
+    depends_on:
+      - kdc
+
+  linuxclient:
+    build:
+      context: ./
+      dockerfile: ./linuxclient/Dockerfile
+      args:
+        SDK_BASE_IMAGE: ${SDK_BASE_IMAGE:-mcr.microsoft.com/dotnet/core/sdk:3.0.100-bionic}
+    image: linuxclient:5.0
+    container_name: linuxclient
+    hostname: linuxclient
+    domainname: linux.contoso.com
+    dns_search: linux.contoso.com
+    volumes:
+      - shared-volume:/SHARED
+    networks:
+      - network1
+    depends_on:
+      - apacheweb
+      - linuxweb
+      - kdc
+
+networks:
+  network1:
+    name: linux.contoso.com
+
+volumes:
+  shared-volume:

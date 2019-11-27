@@ -1,0 +1,46 @@
+# Build Docker image for this app, to be published to Docker Registry
+pool:
+  vmImage: 'ubuntu-18.04'
+
+#variables:
+#  buildConfiguration: 'Debug'
+
+variables:
+  - template: ../variables.yml
+  - name: sdkBaseImage
+    value: linux-dotnetruntime-sdk-current
+  - name: enterpriseTestsSetup
+    value: $(sourcesRoot)/System.Net.Security/tests/EnterpriseTests/SingleRealm/setup
+
+steps:
+- bash: |
+    docker build -t $(sdkBaseImage) --build-arg CONFIGURATION=$(BUILD_CONFIGURATION) --build-arg BUILD_SCRIPT_NAME=$(buildScriptFileName) -f $(enterpriseTestsSetup)/libraries.Dockerfile .
+  displayName: Build Libraries
+
+- bash: |
+    cd $(enterpriseTestsSetup)
+    docker-compose build
+  displayName: Build test machine images
+  env:
+    SDK_BASE_IMAGE: $(sdkBaseImage)
+
+- bash: |
+    docker-compose up -d
+  displayName: Start test network and machines
+
+- bash: |
+    cd ..
+    docker cp tests linuxclient:/tests
+    docker exec linuxclient dotnet test /tests/EnterpriseTests.csproj --logger:trx --results-directory /testresults
+    docker cp linuxclient:/testresults .
+  displayName: Run tests
+
+- bash: |
+    docker-compose down
+  displayName: Stop test network and machines
+
+- task: PublishTestResults@2
+  inputs:
+    testRunner: VSTest
+    testResultsFiles: '**/*.trx'
+    failTaskOnFailedTests: true
