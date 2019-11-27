@@ -39,6 +39,7 @@ steps:
   displayName: Run tests
 
 - bash: |
+    cd $(enterpriseTestsSetup)
     docker-compose down
   displayName: Stop test network and machines
 
