@@ -29,9 +29,9 @@ steps:
 
 - bash: |
     docker cp $(systemNetSecurityTests) linuxclient:/System.Net.Security
-    docker exec linuxclient dotnet test /System.Net.Security/System.Net.Security.Enterprise.Tests.csproj --logger:trx --results-directory /testresults
+    docker exec linuxclient dotnet test /System.Net.Security/System.Net.Security.EnterpriseTests.csproj --logger:trx --results-directory /testresults
     docker cp linuxclient:/testresults .
-  displayName: Run System.Net.Security EnterpriseTests
+  displayName: Run System.Net.Security.EnterpriseTests
 
 - bash: |
     cd $(enterpriseTestsSetup)
