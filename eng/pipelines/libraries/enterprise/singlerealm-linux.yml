@@ -1,9 +1,5 @@
-# Build Docker image for this app, to be published to Docker Registry
 pool:
   vmImage: 'ubuntu-18.04'
-
-#variables:
-#  buildConfiguration: 'Debug'
 
 variables:
   - template: ../variables.yml
@@ -11,7 +7,7 @@ variables:
     value: linux-dotnetruntime-sdk-current
   - name: enterpriseTestsSetup
     value: $(sourcesRoot)/Common/tests/Scripts/EnterpriseTestsSetup/SingleRealm
-  - name: enterpriseTests
+  - name: systemNetSecurityTests
     value: $(sourcesRoot)/System.Net.Security/tests/EnterpriseTests/SingleRealm
 
 steps:
@@ -32,10 +28,10 @@ steps:
   displayName: Start test network and machines
 
 - bash: |
-    docker cp $(enterpriseTests) linuxclient:/System.Net.Security
+    docker cp $(systemNetSecurityTests) linuxclient:/System.Net.Security
     docker exec linuxclient dotnet test /System.Net.Security/System.Net.Security.Enterprise.Tests.csproj --logger:trx --results-directory /testresults
     docker cp linuxclient:/testresults .
-  displayName: Run System.Net.Security.Enterprise tests
+  displayName: Run System.Net.Security EnterpriseTests
 
 - bash: |
     cd $(enterpriseTestsSetup)
