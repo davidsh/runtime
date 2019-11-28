@@ -10,7 +10,7 @@ variables:
   - name: sdkBaseImage
     value: linux-dotnetruntime-sdk-current
   - name: enterpriseTestsSetup
-    value: $(sourcesRoot)/System.Net.Security/tests/EnterpriseTests/SingleRealm/setup
+    value: $(sourcesRoot)/Common/tests/Scripts/EnterpriseTestsSetup/SingleRealm
   - name: enterpriseTests
     value: $(sourcesRoot)/System.Net.Security/tests/EnterpriseTests/SingleRealm
 
@@ -32,11 +32,10 @@ steps:
   displayName: Start test network and machines
 
 - bash: |
-    cd $(enterpriseTests)
-    docker cp tests linuxclient:/tests
-    docker exec linuxclient dotnet test /tests/EnterpriseTests.csproj --logger:trx --results-directory /testresults
+    docker cp $(enterpriseTests) linuxclient:/System.Net.Security
+    docker exec linuxclient dotnet test /System.Net.Security/System.Net.Security.Enterprise.Tests.csproj --logger:trx --results-directory /testresults
     docker cp linuxclient:/testresults .
-  displayName: Run tests
+  displayName: Run System.Net.Security.Enterprise tests
 
 - bash: |
     cd $(enterpriseTestsSetup)
