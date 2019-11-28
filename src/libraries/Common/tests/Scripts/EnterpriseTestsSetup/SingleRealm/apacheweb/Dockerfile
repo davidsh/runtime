@@ -12,4 +12,6 @@ RUN ./setup-web.sh
 
 COPY ./apacheweb/httpd.conf /usr/local/apache2/conf/httpd.conf
 
+EXPOSE 80
+
 ENTRYPOINT ["/bin/sh", "/setup/run.sh"]

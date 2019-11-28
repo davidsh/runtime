@@ -1,6 +1,5 @@
 FROM mcr.microsoft.com/dotnet/core/sdk:3.0.100-bionic
 
-# environment variables
 ENV DEBIAN_FRONTEND noninteractive
 
 COPY ./kdc/kadm5.acl /etc/krb5kdc/
@@ -14,5 +13,8 @@ RUN ./setup-kdc.sh
 
 COPY ./kdc/run.sh .
 RUN chmod +x run.sh
+
+EXPOSE 88/tcp
+EXPOSE 88/udp
 
 ENTRYPOINT ["/bin/bash", "/setup/run.sh"]

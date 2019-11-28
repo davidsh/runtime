@@ -17,4 +17,7 @@ ENV NTLM_USER_FILE=/setup/ntlm_user_file
 COPY ./testservers/webserver/*.* /webserver/
 COPY ./testservers/negserver/*.* /negserver/
 
+EXPOSE 80
+EXPOSE 8080
+
 ENTRYPOINT ["/bin/bash", "/setup/run.sh"]
