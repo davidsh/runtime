@@ -345,7 +345,11 @@ namespace System.Net.Http
                 return Task.FromException<HttpResponseMessage>(error);
             }
 
-            return handler.SendAsync(request, cancellationToken);
+            if (NetEventSource.IsEnabled) NetEventSource.Log.RequestStart(request.Method.Method, request.RequestUri?.AbsoluteUri.ToString());
+            Task<HttpResponseMessage> task = handler.SendAsync(request, cancellationToken);
+            if (NetEventSource.IsEnabled) NetEventSource.Log.RequestStop();
+
+            return task;
         }
 
         private Exception? ValidateAndNormalizeRequest(HttpRequestMessage request)

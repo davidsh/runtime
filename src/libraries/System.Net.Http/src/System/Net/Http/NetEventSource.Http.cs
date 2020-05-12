@@ -5,6 +5,8 @@
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace System.Net
 {
@@ -19,6 +21,18 @@ namespace System.Net
         private const int AuthenticationInfoId = HandlerMessageId + 1;
         private const int AuthenticationErrorId = AuthenticationInfoId + 1;
         private const int HandlerErrorId = AuthenticationErrorId + 1;
+        private const int RequestStartId = HandlerErrorId + 1;
+        private const int RequestStopId = RequestStartId + 1;
+
+        private IncrementingPollingCounter? _requestsPerSecondCounter;
+        private PollingCounter? _totalRequestsCounter;
+        private PollingCounter? _failedRequestsCounter;
+        private PollingCounter? _currentRequestsCounter;
+        private EventCounter? _queueDuration;
+
+        private long _totalRequests;
+        private long _currentRequests;
+        private long _failedRequests;
 
         [NonEvent]
         public static void UriBaseAddress(object obj, Uri? baseAddress)
@@ -86,6 +100,69 @@ namespace System.Net
         [Event(AuthenticationErrorId, Keywords = Keywords.Debug, Level = EventLevel.Error)]
         public void AuthenticationError(string? uri, string message) =>
             WriteEvent(AuthenticationErrorId, uri, message);
+
+        // NOTE
+        // - The 'Start' and 'Stop' suffixes on the following event names have special meaning in EventSource. They
+        //   enable creating 'activities'.
+        //   For more information, take a look at the following blog post:
+        //   https://blogs.msdn.microsoft.com/vancem/2015/09/14/exploring-eventsource-activity-correlation-and-causation-features/
+        // - A stop event's event id must be next one after its start event.
+        [Event(RequestStartId, Level = EventLevel.Informational)]
+        public void RequestStart(string method, string? url)
+        {
+            Interlocked.Increment(ref _totalRequests);
+            Interlocked.Increment(ref _currentRequests);
+            WriteEvent(RequestStartId, method, url);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        [Event(RequestStopId, Level = EventLevel.Informational)]
+        public void RequestStop()
+        {
+            Interlocked.Decrement(ref _currentRequests);
+            WriteEvent(RequestStopId);
+            _queueDuration?.WriteMetric(11);
+        }
+
+        [NonEvent]
+        public void RequestFailed()
+        {
+            Interlocked.Increment(ref _failedRequests);
+        }
+
+        protected override void OnEventCommand(EventCommandEventArgs command)
+        {
+            if (command.Command == EventCommand.Enable)
+            {
+                // This is the convention for initializing counters in the RuntimeEventSource (lazily on the first enable command).
+                // They aren't disabled afterwards...
+                _requestsPerSecondCounter = new IncrementingPollingCounter("requests-per-second", this, () => _totalRequests)
+                {
+                    DisplayName = "Request Rate",
+                    DisplayRateTimeScale = TimeSpan.FromSeconds(1)
+                };
+
+                _totalRequestsCounter = new PollingCounter("total-requests", this, () => _totalRequests)
+                {
+                    DisplayName = "Total Requests",
+                };
+
+                _currentRequestsCounter = new PollingCounter("current-requests", this, () => _currentRequests)
+                {
+                    DisplayName = "Current Requests"
+                };
+
+                _failedRequestsCounter = new PollingCounter("failed-requests", this, () => _failedRequests)
+                {
+                    DisplayName = "Failed Requests"
+                };
+
+                _queueDuration = new EventCounter("queue-duration", this)
+                {
+                    DisplayName = "Average Time in Queue",
+                };
+            }
+        }
 
         [NonEvent]
         private unsafe void WriteEvent(int eventId, int arg1, int arg2, int arg3, string? arg4, string? arg5)
